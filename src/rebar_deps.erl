@@ -121,6 +121,7 @@ setup_env(_Config) ->
     end.
 
 'get-deps'(Config, _) ->
+    io:format("get-deps~n"),
     %% Determine what deps are available and missing
     Deps = rebar_config:get_local(Config, deps, []),
     {_AvailableDeps, MissingDeps} = find_deps(find, Deps),
@@ -321,6 +322,7 @@ use_source(Dep, 0) ->
 use_source(Dep, Count) ->
     case filelib:is_dir(Dep#dep.dir) of
         true ->
+            io:format("use_source~n"),
             %% Already downloaded -- verify the versioning matches the regex
             case is_app_available(Dep#dep.app,
                                   Dep#dep.vsn_regex, Dep#dep.dir) of
@@ -338,12 +340,20 @@ use_source(Dep, Count) ->
                            "with reason:~n~p.\n", [Dep#dep.dir, Reason])
             end;
         false ->
+            io:format("use_source ~p ~p~n", [Dep, Count]),
             ?CONSOLE("Pulling ~p from ~p\n", [Dep#dep.app, Dep#dep.source]),
             require_source_engine(Dep#dep.source),
             {true, TargetDir} = get_deps_dir(Dep#dep.app),
-            download_source(TargetDir, Dep#dep.source),
+            download_source(TargetDir, trans(Dep#dep.source)),
             use_source(Dep#dep { dir = TargetDir }, Count-1)
     end.
+
+trans({git, [$g, $i, $t, $:, $/, $/ |Rest], Other}) ->
+    io:format("git -> http: ~p~n", [Rest]),
+    {git, "http://" ++ Rest, Other};
+trans(Other) ->
+    Other.
+    
 
 download_source(AppDir, {hg, Url, Rev}) ->
     ok = filelib:ensure_dir(AppDir),
